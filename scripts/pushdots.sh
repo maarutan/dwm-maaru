@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Объявление переменных
-REPO_SSH=${REPO_SSH:-"git@github.com:maarutan/dwm_dots-maaru.git ~/.dwm_dots-maaru"}
+REPO_SSH=${REPO_SSH:-"git@github.com:maarutan/dwm_dots-maaru.git"}
 BRANCH=${BRANCH:-"main"}
 SOURCE_DIR=${SOURCE_DIR:-"$HOME/.dwm_sync-maaru"}
 TARGET_DIR=${TARGET_DIR:-"$HOME/.dwm_dots-maaru"}
