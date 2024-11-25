@@ -1657,8 +1657,13 @@ manage(Window w, XWindowAttributes *wa)
     updatewmhints(c);
     c->x = c->mon->mx + (c->mon->mw - WIDTH(c))  / 2;
 	c->y = c->mon->my + (c->mon->mh - HEIGHT(c)) / 2;
-    if (c->isfloating)
+    if (c->isfloating) {
+        c->x = c->mon->mx + (c->mon->mw - WIDTH(c)) / 2;
+        c->y = c->mon->my + (c->mon->mh - HEIGHT(c)) / 2;
+        XMoveWindow(dpy, c->win, c->x, c->y);
         XRaiseWindow(dpy, c->win);
+
+}
 
     if (attachbelow)
         attachBelow(c);

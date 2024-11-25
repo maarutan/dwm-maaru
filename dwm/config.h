@@ -84,7 +84,9 @@ static const Rule rules[]            =     {
     { "telegram-desktop",   NULL   , NULL               , 1 << 3, 0, -1     },
     { "TelegramDesktop" ,   NULL   , NULL               , 1 << 3, 0, -1     },
     { "kitty"           ,   NULL   , "neofetch_terminal", 1 << 0, 0, -1     },
-    { "Plank"           ,   NULL   , NULL               , 0, True, -1       },
+    { "Plank"           ,   NULL   , NULL               , 0, True,   -1     },
+    { "vesktop"         ,   NULL   , NULL               , 0, True,   -1     },
+
 };
 //============================================//
 // убрать обводку 
