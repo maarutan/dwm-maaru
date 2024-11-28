@@ -2793,9 +2793,16 @@ spawn(const Arg *arg)
 void
 setclienttagprop(Client *c)
 {
-	long data[] = { (long) c->tags, (long) c->mon->num };
-	XChangeProperty(dpy, c->win, netatom[NetClientInfo], XA_CARDINAL, 32,
-			PropModeReplace, (unsigned char *) data, 2);
+    long data[] = { (long) c->tags, (long) c->mon->num };
+    
+    // Обновляем _NET_WM_DESKTOP
+    unsigned long desktop_data[] = { c->tags };  // Используем tаг как рабочий стол
+    XChangeProperty(dpy, c->win, netatom[NetWMDesktop], XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char *) desktop_data, 1);
+
+    // Обновляем _NET_CLIENT_INFO (теги и монитор)
+    XChangeProperty(dpy, c->win, netatom[NetClientInfo], XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char *) data, 2);
 }
 
 void
@@ -3446,23 +3453,34 @@ updatewindowtype(Client *c)
 		c->isfloating = 1;
 }
 
-void
-updatewmhints(Client *c)
-{
-	XWMHints *wmh;
 
-	if ((wmh = XGetWMHints(dpy, c->win))) {
-		if (c == selmon->sel && wmh->flags & XUrgencyHint) {
-			wmh->flags &= ~XUrgencyHint;
-			XSetWMHints(dpy, c->win, wmh);
-		} else
-			c->isurgent = (wmh->flags & XUrgencyHint) ? 1 : 0;
-		if (wmh->flags & InputHint)
-			c->neverfocus = !wmh->input;
-		else
-			c->neverfocus = 0;
-		XFree(wmh);
-	}
+
+#define ISFLOATING(c) ((c->isfloating) || (c->isfullscreen))
+#define _NET_WM_WINDOW_TYPE_DOCK  5
+
+void updatewmhints(Client *c) {
+    XWMHints *wmh;
+
+    if ((wmh = XGetWMHints(dpy, c->win))) {
+        if (c == selmon->sel && wmh->flags & XUrgencyHint) {
+            wmh->flags &= ~XUrgencyHint;
+            XSetWMHints(dpy, c->win, wmh);
+        } else
+            c->isurgent = (wmh->flags & XUrgencyHint) ? 1 : 0;
+
+        if (wmh->flags & InputHint)
+            c->neverfocus = !wmh->input;
+        else
+            c->neverfocus = 0;
+
+        XFree(wmh);
+    }
+
+    // Добавить обработку _NET_WM_WINDOW_TYPE_DOCK для Plank
+    if (ISFLOATING(c)) {
+        long data[] = { _NET_WM_WINDOW_TYPE_DOCK };
+        XChangeProperty(dpy, c->win, netatom[NetWMWindowType], XA_ATOM, 32, PropModeReplace, (unsigned char *)data, 1);
+    }
 }
 
 
