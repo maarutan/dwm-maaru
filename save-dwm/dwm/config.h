@@ -6,11 +6,22 @@
 ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝██╗██║  ██║
  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═╝
 //==========================================================*/
+//
+//logo
+static const char *logo = "  󰣇  "; 
+static const char *logo_script = "$HOME/.config/rofi/launchers/launcher.sh";
+static int logo_state = 1;  
+//power 
+static const char *power = "  ⏻     "; 
+static const char *power_script = "$HOME/.config/rofi/powermenu/powermenu.sh"; 
+static int power_state = 1; 
+
+//========================================//
 //tag preview
 static const int scalepreview                 = 4;        /* preview scaling (display w and h / scalepreview) */
 static const int previewbar                   = 0;        /* show the bar in the preview window */
 //========================================//
-// appearance 
+// appearance  
 static const unsigned int borderpx            = 4 ;       // border pixel of windows 
 static const unsigned int snap                = 0 ;       // snap pixel 
 //========================================//
@@ -30,9 +41,6 @@ int                 show_tag_boxes       = 2 ;       // Установите з�
 //========================================//
 //toggle_smartgaps_monocle
 int         always_smartgaps_monocle     = 1 ;       // 0 - стандартная логика, 1 - всегда включены smartgaps
-//========================================//
-// border bar
-static const char col_borderbar[] = "#2F2F49"; // Цвет рамки бара
 //========================================//
 //gap
 static const unsigned int gappiv         = 13 ;       // vert inner gap between windows 
@@ -66,32 +74,109 @@ static const          int sidepad        = 15 ;       // horizontal padding of b
 //========================================//
 // font
 static const char *fonts[] = { 
-    "FiraCode Nerd Font:size=10", 
+    "FiraCode Nerd Font:size=11", 
     "Noto Sans:size=10",
     "Noto Sans CJK JP:size=10",
     "apple-color-emoji:size=10",
     "monospace:size=10", 
 };
 //========================================//
-// color
-static const char col_noActiveFG[]       =  "#bbbbbb"   ;
-static const char col_activeFG[]         =  "#cdd6f4"   ;
-static const char background[]           =  "#1e1e2e"   ;
-static const char col_borderActive[]     =  "#8aadf4"   ;
-static const char col_noActive[]         =  "#45475a"   ;
-static const char background2[]          =  "#2f2f49"   ;
-static const char *colors[][3]           = {
-//========================================//
-//                   fg              bg          border   
-	[SchemeNorm]     = { col_noActiveFG  ,  background  , col_noActive,    },
-	[SchemeSel]      = { col_activeFG    ,  background2 , col_borderActive },
-	[SchemeTitle]    = { col_noActiveFG  ,  background  , col_noActive     }, // Цвет заголовков окон
-  [SchemeTitleSel] = { col_activeFG    ,  background2 , col_borderActive }, // Цвет активного окна
-  /* [SchemeLine]     = { col_borderActive,  background2 , col_borderActive }, */
+// Определение цветовых значений
+static const char col_noActiveFG[]       = "#cdd6f4";   // Яркий светло-серый текст для неактивных элементов
+static const char col_activeFG[]         = "#cdd6f4";   // Чисто белый текст для активных элементов
+static const char background[]           = "#1e1e2e";   // Основной фон
+static const char col_borderActive[]     = "#89b4fa";   // Цвет рамки активного элемента
+static const char col_noActive[]         = "#45475a";   // Цвет фона для неактивных элементов
+static const char selectedBG[]           = "#2f2f49";   // Второй цвет фона (например, для выделения)
+static const char logoFG[]               = "#1e1e2e";   // Белый текст логотипа
+static const char logoBG[]               = "#8aadf4";   // Фон логотипа
+static const char logoBR[]               = "#8aadf4";   // Цвет рамки логотипа
+static const char powerFG[]              = "#f38ba8";   // Белый текст для кнопки выключения
+static const char powerBG[]              = "#1e1e2e";   // Розовый фон кнопки выключения
+static const char powerBR[]              = "#f38ba8";   // Цвет рамки кнопки выключения
+static const char titleBG[]              = "#c6a0f6";   // Цвет рамки кнопки выключения
+
+// Цветовые схемы для тегов
+static const char tag1ActiveFG[]         = "#ffffff"; // Белый текст (максимальный контраст)
+static const char tag1InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag1ActiveBG[]         = "#f38ba8"; // Розовый акцент (Rosewater)
+static const char tag1InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag2ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag2InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag2ActiveBG[]         = "#fab387"; // Оранжевый акцент (Peach)
+static const char tag2InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag3ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag3InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag3ActiveBG[]         = "#f9e2af"; // Желтый акцент (Yellow)
+static const char tag3InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag4ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag4InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag4ActiveBG[]         = "#a6e3a1"; // Зеленый акцент (Green)
+static const char tag4InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag5ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag5InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag5ActiveBG[]         = "#89b4fa"; // Голубой акцент (Blue)
+static const char tag5InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag6ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag6InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag6ActiveBG[]         = "#b4befe"; // Сиреневый акцент (Lavender)
+static const char tag6InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag7ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag7InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag7ActiveBG[]         = "#cba6f7"; // Фиолетовый акцент (Mauve)
+static const char tag7InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag8ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag8InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag8ActiveBG[]         = "#f5c2e7"; // Розовый акцент (Pink)
+static const char tag8InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+static const char tag9ActiveFG[]         = "#ffffff"; // Белый текст
+static const char tag9InactiveFG[]       = "#d9e0ee"; // Светло-серый текст
+static const char tag9ActiveBG[]         = "#94e2d5"; // Аква акцент (Teal)
+static const char tag9InactiveBG[]       = "#1e1e2e"; // Темный фон (Base)
+
+// Основной массив цветов
+static const char *colors[][3] = {
+ //                            fg             bg            border
+    [SchemeLogo]         = {   logoFG   ,    logoBG      ,    logoBR              }, // logo
+    [SchemePower]        = {   powerFG  ,    powerBG     ,    powerBR             }, // power
+    [SchemeNorm]         = { "#cdd6f4"  ,    "#1e1e2e"   ,    "#45475a"           }, // Нормальный режим
+    [SchemeSel]          = { "#1e1e2e"  ,    "#89b4fa"   ,    "#89b4fa"           }, // Выбранный элемент
+    [SchemeFg]           = { background ,    selectedBG  ,    col_borderActive    }, // title active teg color
+    [SchemeTitle]        = { selectedBG,     titleBG     ,    col_borderActive    }, // title color
+  // tags
+    [SchemeTag1Active]   = { tag1ActiveFG, tag1ActiveBG,   "#45475a"       },
+    [SchemeTag1Inactive] = { tag1InactiveFG, tag1InactiveBG, "#1e1e2e"     },
+    [SchemeTag2Active]   = { tag2ActiveFG, tag2ActiveBG,   "#45475a"       },
+    [SchemeTag2Inactive] = { tag2InactiveFG, tag2InactiveBG, "#1e1e2e"     },
+    [SchemeTag3Active]   = { tag3ActiveFG, tag3ActiveBG,   "#45475a"       },
+    [SchemeTag3Inactive] = { tag3InactiveFG, tag3InactiveBG, "#1e1e2e"     },
+    [SchemeTag4Active]   = { tag4ActiveFG, tag4ActiveBG,   "#45475a"       },
+    [SchemeTag4Inactive] = { tag4InactiveFG, tag4InactiveBG, "#1e1e2e"     },
+    [SchemeTag5Active]   = { tag5ActiveFG, tag5ActiveBG,   "#45475a"       },
+    [SchemeTag5Inactive] = { tag5InactiveFG, tag5InactiveBG, "#1e1e2e"     },
+    [SchemeTag6Active]   = { tag6ActiveFG, tag6ActiveBG,   "#45475a"       },
+    [SchemeTag6Inactive] = { tag6InactiveFG, tag6InactiveBG, "#1e1e2e"     },
+    [SchemeTag7Active]   = { tag7ActiveFG, tag7ActiveBG,   "#45475a"       },
+    [SchemeTag7Inactive] = { tag7InactiveFG, tag7InactiveBG, "#1e1e2e"     },
+    [SchemeTag8Active]   = { tag8ActiveFG, tag8ActiveBG,   "#45475a"       },
+    [SchemeTag8Inactive] = { tag8InactiveFG, tag8InactiveBG, "#1e1e2e"     },
+    [SchemeTag9Active]   = { tag9ActiveFG, tag9ActiveBG,   "#45475a"       },
+    [SchemeTag9Inactive] = { tag9InactiveFG, tag9InactiveBG, "#1e1e2e"     },
 };
+
+// Основной массив цветов
 // tagging 
-static const char *tags[] = {    " 󱍢 ", "  ", " 󰈹 ", "  ", " 󰣇 ", "  ", "  ", "  ", "  " };
-/* static const char *tags[] = { " 1 ", " 2 ", " 3 ", " 4 ", " 5 ", " 6 ", " 7 ", " 8 ", " 9 " }; */
+static const char forTags[]          = { " 󰊠 " };   
+static const char *tagicons_active[] = { " 󰮯 " };
+static const char *tags[]            = { forTags, forTags, forTags, forTags, forTags, forTags, forTags, forTags, forTags };
 
 /* static const char *tags[] = { "󱍢", "", "󰈹", "", "󰣇", "", "", "", "" }; */
 /* static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" }; */
@@ -212,7 +297,6 @@ static Keychord *keychords[]        = {
     &((Keychord){2, {{MODKEY, XK_s}, {0,XK_u}} ,          spawn,  SHCMD("kitty -e  $HOME/.suckless/scripts/update.sh")  }), //update system
     &((Keychord){2, {{MODKEY, XK_s}, {0|SHIFT,XK_p}}, spawn,  SHCMD("kitty -e  $HOME/.suckless/scripts/pushdots.sh")  }), //pushDots
     &((Keychord){2, {{MODKEY, XK_s}, {0,XK_r}} ,  recompile_and_restart,     { 0 }  }), //recompile dwm
-    &((Keychord){2, {{MODKEY, XK_s}, {0, XK_p}}, spawn,           SHCMD("$HOME/.config/rofi/powermenu/type-2/powermenu.sh")  }), // powermenu
     &((Keychord){3, {{MODKEY, XK_s}, {0, XK_s} ,  {0, XK_t}},     toggleSystray,  { 0 }  }), // toggle systray
     &((Keychord){2, {{MODKEY, XK_s}, {0, XK_t}}, spawn,           SHCMD("$HOME/.suckless/scripts/toggle_touchpad.sh")  }), // toggle systray
     &((Keychord){2, {{MODKEY, XK_s}, {0, XK_d}}, toggle_bottGaps, {0}  }), // toggle bottGaps
@@ -220,6 +304,7 @@ static Keychord *keychords[]        = {
     &((Keychord){2, {{MODKEY, XK_s}, {0, XK_n}}, spawn,           SHCMD("pgrep -fx 'kitty --title nmtui nmtui-connect' && pkill -fx 'kitty --title nmtui nmtui-connect' || kitty --title nmtui nmtui-connect &") }), // network-manager
     &((Keychord){2, {{MODKEY, XK_s}, {0, XK_p}}, spawn,           SHCMD("$HOME/.config/rofi/powermenu/powermenu.sh") }), //powermenu
     &((Keychord){2, {{MODKEY, XK_s}, {0, XK_l}}, spawn,           SHCMD("$HOME/.config/rofi/powermenu/.screen-lock.sh") }), //lockfullscreen
+    &((Keychord){2, {{MODKEY, XK_s}, {0, XK_q}}, spawn,           SHCMD("$HOME/.suckless/scripts/quran") }), //random ayat quran
 //======================================================================//
     // aplication [ super + a ] 
     &((Keychord){2, {{MODKEY, XK_a}, {0,XK_f}}, spawn,  {.v = browser } }),   //firefox
@@ -234,9 +319,9 @@ static Keychord *keychords[]        = {
     &((Keychord){2, {{MODKEY, XK_p}, {0,XK_c}},  spawn,  SHCMD("$HOME/.suckless/scripts/xcolor-picker.sh")  }),//	colorpicer
     &((Keychord){2, {{MODKEY, XK_p}, {0, XK_s}}, spawn,  SHCMD("flameshot gui")  }), //screen shot
     &((Keychord){2, {{MODKEY, XK_p}, {0|SHIFT, XK_c}}, spawn, SHCMD("$HOME/.suckless/scripts/clock.sh") }), //clock
-    &((Keychord){4, {{MODKEY, XK_p}, {0, XK_p},{0, XK_b},{0,XK_t}}, spawn, SHCMD("$HOME/.config/picom/toggle_config.sh default; $HOME/.config/kitty/.other/toggle_config.sh default && $HOME/.config/dunst/.other/toggle_config.sh default") }), // picom blur
-    &((Keychord){4, {{MODKEY, XK_p}, {0, XK_p},{0, XK_g},{0,XK_t}}, spawn, SHCMD("$HOME/.config/picom/toggle_config.sh glass; $HOME/.config/kitty/.other/toggle_config.sh default && $HOME/.config/dunst/.other/toggle_config.sh default") }), // picom glass
-    &((Keychord){4, {{MODKEY, XK_p}, {0, XK_p},{0, XK_o},{0,XK_t}}, spawn, SHCMD("$HOME/.config/picom/toggle_config.sh nOpacity; $HOME/.config/kitty/.other/toggle_config.sh nOpacity && $HOME/.config/dunst/.other/toggle_config.sh nOpacity") }), // picom no opacity
+    &((Keychord){4, {{MODKEY, XK_p}, {0, XK_p},{0, XK_b},{0,XK_t}}, spawn, SHCMD("$HOME/.config/picom/toggle_config.sh default; $HOME/.config/kitty/.other/toggle_config.sh default && $HOME/.config/dunst/.picom/toggle_config.sh default") }), // picom blur
+    &((Keychord){4, {{MODKEY, XK_p}, {0, XK_p},{0, XK_g},{0,XK_t}}, spawn, SHCMD("$HOME/.config/picom/toggle_config.sh glass; $HOME/.config/kitty/.other/toggle_config.sh default && $HOME/.config/dunst/.picom/toggle_config.sh default") }), // picom glass
+    &((Keychord){4, {{MODKEY, XK_p}, {0, XK_p},{0, XK_o},{0,XK_t}}, spawn, SHCMD("$HOME/.config/picom/toggle_config.sh nOpacity; $HOME/.config/kitty/.other/toggle_config.sh nOpacity && $HOME/.config/dunst/.picom/toggle_config.sh nOpacity") }), // picom no opacity
     &((Keychord){3, {{MODKEY, XK_p}, {0, XK_p},{0, XK_c}}, spawn, SHCMD("kitty -e $HOME/.config/picom/") }), // picom 
 //======================================================================//
     //filemanager [super + e ]
@@ -254,8 +339,10 @@ static Keychord *keychords[]        = {
     &((Keychord){1, {{MODKEY, XK_q}},       killclient,     {0} }),
 //======================================================================//
     //changeKeyboard
-    &((Keychord){1, {{CTRL, 0xffe9}}, spawn,  SHCMD("pkill -RTMIN+1 dwmblocks; $HOME/.suckless/scripts/changeKeyboard.sh; setxkbmap -layout us,ru -option 'grp:ctrl_alt_toggle' -option 'ctrl:nocaps'")  }),
-    &((Keychord){1, {{CTRL, 0x60 }}, spawn,  SHCMD("$HOME/.suckless/scripts/caps.sh")  }),
+    &((Keychord){1, {{CTRL, XK_Alt_L}}, spawn,  SHCMD("pkill -RTMIN+1 dwmblocks; $HOME/.suckless/scripts/changeKeyboard.sh; setxkbmap -layout us,ru -option 'grp:ctrl_alt_toggle' -option 'ctrl:nocaps'")  }),
+    &((Keychord){1, {{CTRL, XK_grave}}, spawn,  SHCMD("$HOME/.suckless/scripts/caps.sh")  }),
+    &((Keychord){1, {{CTRL|SHIFT, XK_grave}}, spawn,  SHCMD("$HOME/.suckless/scripts/realoadKB.sh")  }),
+  
 //======================================================================//
 	//rofi
     &((Keychord){1, {{MODKEY, XK_r}}, spawn,  SHCMD("$HOME/.config/rofi/launchers/launcher.sh")  }),

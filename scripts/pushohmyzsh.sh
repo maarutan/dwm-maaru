@@ -1,21 +1,10 @@
 #!/bin/bash
 
 # Объявление переменных
-REPO_SSH=${REPO_SSH:-"git@github.com:maarutan/dwm_dots-maaru.git"}
+REPO_SSH=${REPO_SSH:-"git@github.com:maarutan/oh-my-zsh-maaru"}
 BRANCH=${BRANCH:-"main"}
-SOURCE_DIR=${SOURCE_DIR:-"$HOME/.dwm_sync-maaru"}
-TARGET_DIR=${TARGET_DIR:-"$HOME/.dwm_dots-maaru"}
-
-# //==============доп вызовы==============//
-YOURTERM=${YOURTERM:-"kitty -e"}
-add_more_push()
-{
-    $HOME/.suckless/scripts/pushvsconfig.sh 
-    $HOME/.suckless/scripts/pushdwm.sh 
-    $HOME/.suckless/scripts/pushohmyzsh.sh
-
-}
-# //==============доп вызовы==============//
+SOURCE_DIR=${SOURCE_DIR:-"$HOME/.oh-my-zsh-maaru_sync"}
+TARGET_DIR=${TARGET_DIR:-"$HOME/.oh-my-zsh-maaru"}
 
 # Проверка наличия необходимых приложений
 required_apps=(git rsync neofetch bc figlet sl)
@@ -63,7 +52,6 @@ plusing(){
 
 }
 # //==============новый функционал==============//
-
 delete_duplicate_dirs() {
     echo "Проверка на дубликаты в $TARGET_DIR..."
 
@@ -85,11 +73,12 @@ delete_duplicate_dirs() {
 
     echo "Удаление дубликатов завершено."
 }
+
 # //==============новый функционал==============//
 
 # Установка обработчика прерывания
 trap trap_exit SIGINT
-trap 'plusing; add_more_push; trap_exit' EXIT
+trap trap_exit EXIT
 
 
 

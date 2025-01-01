@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdint.h>
+#include <X11/cursorfont.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <X11/cursorfont.h>
@@ -27,6 +28,7 @@
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
 #include <Imlib2.h>
+#include <X11/cursorfont.h>
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
@@ -98,7 +100,33 @@ enum { Manager, Xembed, XembedInfo, XLast }; /* Xembed atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkClientWin,
        ClkRootWin, ClkLast }; /* clicks */
-enum { SchemeNorm, SchemeSel, SchemeTitle, SchemeTitleSel, SchemeLine }; /* color schemes */
+enum {
+    SchemeNorm,
+    SchemeSel,
+    SchemeLogo,
+    SchemePower,
+    SchemeTag1Active,
+    SchemeFg,
+    SchemeTitle,
+    SchemeTag1Inactive,
+    SchemeTag2Active,
+    SchemeTag2Inactive,
+    SchemeTag3Active,
+    SchemeTag3Inactive,
+    SchemeTag4Active,
+    SchemeTag4Inactive,
+    SchemeTag5Active,
+    SchemeTag5Inactive,
+    SchemeTag6Active,
+    SchemeTag6Inactive,
+    SchemeTag7Active,
+    SchemeTag7Inactive,
+    SchemeTag8Active,
+    SchemeTag8Inactive,
+    SchemeTag9Active,
+    SchemeTag9Inactive,
+    SchemeLast
+};
 
 typedef union {
 	int i;
@@ -239,6 +267,7 @@ static void getfloatpos(int pos, char pCh, int size, char sCh, int min_p, int ma
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static unsigned int getsystraywidth();
+static Clr **scheme;
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
@@ -387,7 +416,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 static Atom wmatom[WMLast], netatom[NetLast], xatom[XLast];
 static int running = 1;
 static Cur *cursor[CurLast];
-static Clr **scheme, clrborder;
 static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
@@ -913,6 +941,7 @@ attachstack(Client *c)
 	c->mon->stack = c;
 }
 
+
 void
 buttonpress(XEvent *e)
 {
@@ -923,17 +952,35 @@ buttonpress(XEvent *e)
     XButtonPressedEvent *ev = &e->xbutton;
 
     click = ClkRootWin;
+
     /* focus monitor if necessary */
     if ((m = wintomon(ev->window)) && m != selmon) {
         unfocus(selmon->sel, 1);
         selmon = m;
         focus(NULL);
     }
+
     if (ev->window == selmon->barwin) {
         i = x = 0;
+
+        /* Определяем ширину логотипа */
+        int logo_width = logo_state ? TEXTW(logo) : 0;
+        if (logo_state && ev->x < logo_width) {
+            /* Запуск скрипта для логотипа */
+            if (fork() == 0) {
+                setsid();
+                execl("/bin/sh", "sh", "-c", logo_script, (char *)NULL);
+                exit(0);
+            }
+            return;
+        }
+
+        x += logo_width; // Сдвигаем начальную позицию для тегов
+
         do
             x += TEXTW(tags[i]);
         while (ev->x >= x && ++i < LENGTH(tags));
+
         if (i < LENGTH(tags)) {
             click = ClkTagBar;
             arg.ui = 1 << i;
@@ -942,21 +989,36 @@ buttonpress(XEvent *e)
                 selmon->previewshow = 0;
                 XUnmapWindow(dpy, selmon->tagwin);
             }
-        } else if (ev->x < x + TEXTW(selmon->ltsymbol))
+        } else if (ev->x < x + TEXTW(selmon->ltsymbol)) {
             click = ClkLtSymbol;
-        else
+        } else {
+            /* Проверяем область power */
+            int power_width = power_state ? TEXTW(power) : 0;
+            int power_x_start = selmon->ww - power_width - (showsystray && !systrayonleft ? sw : 0) - borderpx;
+            if (power_state && ev->x > power_x_start) {
+                /* Запуск скрипта для power */
+                if (fork() == 0) {
+                    setsid();
+                    execl("/bin/sh", "sh", "-c", power_script, (char *)NULL);
+                    exit(0);
+                }
+                return;
+            }
             click = ClkStatusText;
+        }
     } else if ((c = wintoclient(ev->window))) {
         focus(c);
         restack(selmon);
         XAllowEvents(dpy, ReplayPointer, CurrentTime);
         click = ClkClientWin;
     }
+
     for (i = 0; i < LENGTH(buttons); i++)
         if (click == buttons[i].click && buttons[i].func && buttons[i].button == ev->button
         && CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
             buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
 }
+
 
 void
 checkotherwm(void)
@@ -1775,39 +1837,68 @@ gettextprop(Window w, Atom atom, char *text, unsigned int size)
 	return 1;
 }
 
-
-
-
 void
 drawbar(Monitor *m)
 {
-    int x, y = borderpx, w, tw = 0, stw = 0;
-    int th = bh - borderpx * 2;
-    int mw = m->ww - borderpx * 2;
+    int x, y = 0, w, tw = 0, stw = 0;
+    int th = bh;
+    int mw = m->ww;
     int title_start, title_width;
     unsigned int i, occ = 0, urg = 0;
     Client *c;
 
+    int logo_width = logo_state ? TEXTW(logo) : 0;
+    int power_width = power_state ? TEXTW(power) : 0;
+
+    static const int tag_colors_active[] = {
+        SchemeTag1Active,
+        SchemeTag2Active,
+        SchemeTag3Active,
+        SchemeTag4Active,
+        SchemeTag5Active,
+        SchemeTag6Active,
+        SchemeTag7Active,
+        SchemeTag8Active,
+        SchemeTag9Active
+    };
+
+    static const int tag_colors_inactive[] = {
+        SchemeTag1Inactive,
+        SchemeTag2Inactive,
+        SchemeTag3Inactive,
+        SchemeTag4Inactive,
+        SchemeTag5Inactive,
+        SchemeTag6Inactive,
+        SchemeTag7Inactive,
+        SchemeTag8Inactive,
+        SchemeTag9Inactive
+    };
+
     if (!m->showbar)
         return;
 
-    XSetForeground(drw->dpy, drw->gc, clrborder.pixel);
     XFillRectangle(drw->dpy, drw->drawable, drw->gc, 0, 0, m->ww, bh);
 
-    /* Учитываем ширину systray и отступ */
     if (showsystray && m == systraytomon(m)) {
         stw = getsystraywidth();
         if (!systrayonleft) {
-            stw += systraybarspacing; // Добавляем отступ, если systray справа
+            stw += systraybarspacing;
         }
     }
 
-    x = borderpx;
+    x = 0;
+
+    if (logo_state) {
+        drw_setscheme(drw, scheme[SchemeLogo]);
+        drw_rect(drw, x, y, logo_width, th, 1, 1);
+        drw_text(drw, x, y, logo_width, th, lrpad / 2, logo, 0);
+        x += logo_width;
+    }
 
     if (m == selmon) {
         drw_setscheme(drw, scheme[SchemeNorm]);
         tw = TEXTW(stext) - lrpad / 2 + 2;
-        drw_text(drw, mw - tw - stw, y, tw + borderpx, th, lrpad / 2 - 2, stext, 0);
+        drw_text(drw, mw - tw - stw - power_width, y, tw, th, lrpad / 2 - 2, stext, 0);
     }
 
     resizebarwin(m);
@@ -1821,39 +1912,40 @@ drawbar(Monitor *m)
     }
 
     for (i = 0; i < LENGTH(tags); i++) {
-        w = TEXTW(tags[i]);
+        const char *icon;
+        int is_active = m->tagset[m->seltags] & (1 << i);
 
-        drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+        icon = is_active ? tagicons_active[i] : tags[i];
 
-        drw_text(drw, x, y, w, th, lrpad / 2, tags[i], urg & 1 << i);
+        w = TEXTW(icon);
 
-        if (occ & 1 << i) {
+        drw_setscheme(drw, scheme[is_active ? tag_colors_active[i % LENGTH(tag_colors_active)] : tag_colors_inactive[i % LENGTH(tag_colors_inactive)]]);
+
+        drw_text(drw, x, y, w, th, lrpad / 2, icon, urg & (1 << i));
+
+        if (occ & (1 << i)) {
             int line_width = w - 8;
 
             if (show_tag_boxes == 1) {
-                int line_height = 1;
-                if (m->tagset[m->seltags] & 1 << i) {
-                    line_width += 4;
-                    line_height += 1;
-                }
+                int line_height = MAX(1, bh / 12);
+                int line_y_position = 2;
 
                 int line_offset = (w - line_width) / 2;
-                int line_y_position = bh - line_height - 23;
-
+                drw_setscheme(drw, scheme[is_active ? SchemeFg : SchemeNorm]);
                 drw_rect(drw, x + line_offset, line_y_position, line_width, line_height, 1, 0);
             } else if (show_tag_boxes == 2) {
-                int line_height = 1;
-                if (m->tagset[m->seltags] & 1 << i) {
-                    line_width += 2;
-                    line_height += 1;
-                }
+                int line_height = MAX(1, bh / 12);
+                int line_y_position = bh - line_height - 2;
 
                 int line_offset = (w - line_width) / 2;
-                drw_rect(drw, x + line_offset, bh - line_height - 3, line_width, line_height, 1, 0);
+                drw_setscheme(drw, scheme[is_active ? SchemeFg : SchemeNorm]);
+                drw_rect(drw, x + line_offset, line_y_position, line_width, line_height, 1, 0);
             } else if (show_tag_boxes == 3) {
-                drw_rect(drw, x + 6, bh - 20, 5, 5, 1, 0);
-            } else if (show_tag_boxes == 4) {
-                drw_rect(drw, x + 0, bh - 0, 0, 0, 0, 0);
+                int box_size = MIN(bh / 3, 5);
+                int box_y_position = (bh - box_size) / 2.5;
+                int offset = 5;
+                drw_setscheme(drw, scheme[is_active ? SchemeFg : SchemeNorm]);
+                drw_rect(drw, x + offset, box_y_position, box_size, box_size, 1, 0);
             }
         }
         x += w;
@@ -1863,72 +1955,92 @@ drawbar(Monitor *m)
     drw_setscheme(drw, scheme[SchemeNorm]);
     x = drw_text(drw, x, y, w, th, lrpad / 2, m->ltsymbol, 0);
 
+if ((title_width = mw - tw - stw - x - power_width) > th) {
+    title_start = x;
 
-
-    /* Зона заголовка */
-    if ((title_width = mw - tw - stw - x) > th) {
-        title_start = x;
-
-        switch (showtitle) {
-        case 0: // Стадия 1: заголовок окна или арт
-            if (m->sel) { // Есть выбранное окно
-                drw_setscheme(drw, scheme[SchemeTitle]);
-                XFillRectangle(drw->dpy, drw->drawable, drw->gc, title_start, y, title_width, th);
-
-                char app_name[256] = "Unknown";
-                XClassHint ch = { NULL, NULL };
-                if (XGetClassHint(dpy, m->sel->win, &ch)) {
-                    if (ch.res_class) {
-                        strncpy(app_name, ch.res_class, sizeof(app_name) - 1);
-                        app_name[sizeof(app_name) - 1] = '\0';
-                        XFree(ch.res_class);
-                    }
-                    if (ch.res_name)
-                        XFree(ch.res_name);
+    switch (showtitle) {
+    case 0: {
+        if (m->sel) {
+            char app_name[256] = "Unknown";
+            XClassHint ch = { NULL, NULL };
+            if (XGetClassHint(dpy, m->sel->win, &ch)) {
+                if (ch.res_class) {
+                    strncpy(app_name, ch.res_class, sizeof(app_name) - 1);
+                    app_name[sizeof(app_name) - 1] = '\0';
+                    XFree(ch.res_class);
                 }
-
-                int total_width = TEXTW(app_name);
-                int icon_offset = 0;
-
-                if (m->sel->icon) {
-                    total_width += m->sel->icw + ICONSPACING;
-                }
-
-                int center_offset = MAX((title_width - total_width) / 2, 0);
-
-                if (m->sel->icon) {
-                    drw_pic(drw, title_start + center_offset, y + (th - m->sel->ich) / 2, m->sel->icw, m->sel->ich, m->sel->icon);
-                    icon_offset = m->sel->icw + ICONSPACING;
-                }
-
-                drw_text(drw, title_start + center_offset + icon_offset, y, title_width - center_offset - icon_offset, th, lrpad / 2, app_name, 0);
-            } else { // Нет выбранного окна
-                drw_setscheme(drw, scheme[SchemeTitle]); // Используем схему фона заголовка
-                XFillRectangle(drw->dpy, drw->drawable, drw->gc, title_start, y, title_width, th);
-                int art_width = TEXTW(ascii_art);
-                drw_text(drw, title_start + MAX((title_width - art_width) / 2, 0), y, art_width, th, lrpad / 2, ascii_art, 0);
+                if (ch.res_name)
+                    XFree(ch.res_name);
             }
-            break;
 
-        case 1: // Стадия 2: всегда только арт
-            drw_setscheme(drw, scheme[SchemeTitle]); // Используем схему фона заголовка
-            XFillRectangle(drw->dpy, drw->drawable, drw->gc, title_start, y, title_width, th); // Рисуем фон
+            int total_width = TEXTW(app_name);
+            int icon_offset = 0;
+
+            if (m->sel->icon) {
+                total_width += m->sel->icw + ICONSPACING;
+            }
+
+            int center_offset = MAX((title_width - total_width) / 2, 0);
+
+            // Рисуем фон
+            drw_setscheme(drw, scheme[SchemeTitle]);
+            drw_rect(drw, title_start, y, title_width / 3, th, 1, 1);
+            drw_rect(drw, title_start + title_width / 3, y, title_width / 3, th, 1, 1);
+            drw_rect(drw, title_start + 2 * (title_width / 3), y, title_width / 3, th, 1, 1);
+
+            // Рисуем иконку, если есть
+            if (m->sel->icon) {
+                drw_pic(drw, title_start + center_offset, y + (th - m->sel->ich) / 2, m->sel->icw, m->sel->ich, m->sel->icon);
+                icon_offset = m->sel->icw + ICONSPACING;
+            }
+
+            // Рисуем текст
+            drw_text(drw, title_start + center_offset + icon_offset, y, title_width - center_offset - icon_offset, th, lrpad / 2, app_name, 0);
+        } else {
             int art_width = TEXTW(ascii_art);
-            drw_text(drw, title_start + MAX((title_width - art_width) / 2, 0), y, art_width, th, lrpad / 2, ascii_art, 0);
-            break;
 
-        case 2: // Стадия 3: ничего
-            drw_setscheme(drw, scheme[SchemeNorm]);
-            drw_rect(drw, title_start, y, title_width, th, 1, 1);
-            break;
+            // Рисуем фон
+            drw_setscheme(drw, scheme[SchemeTitle]);
+            drw_rect(drw, title_start, y, title_width / 3, th, 1, 1);
+            drw_rect(drw, title_start + title_width / 3, y, title_width / 3, th, 1, 1);
+            drw_rect(drw, title_start + 2 * (title_width / 3), y, title_width / 3, th, 1, 1);
+
+            // Рисуем ASCII-арт, если текст отсутствует
+            drw_text(drw, title_start + MAX((title_width - art_width) / 2, 0), y, art_width, th, lrpad / 2, ascii_art, 0);
         }
+        break;
+    }
+
+    case 1: {
+        int art_width = TEXTW(ascii_art);
+
+        // Рисуем фон
+        drw_setscheme(drw, scheme[SchemeTitle]);
+        drw_rect(drw, title_start, y, title_width / 3, th, 1, 1);
+        drw_rect(drw, title_start + title_width / 3, y, title_width / 3, th, 1, 1);
+        drw_rect(drw, title_start + 2 * (title_width / 3), y, title_width / 3, th, 1, 1);
+
+        // Рисуем ASCII-арт
+        drw_text(drw, title_start + MAX((title_width - art_width) / 2, 0), y, art_width, th, lrpad / 2, ascii_art, 0);
+        break;
+    }
+
+    case 2:
+        // Рисуем полный фон
+        drw_rect(drw, title_start, y, title_width, th, 1, 1);
+        break;
+    }
+}
+
+    if (power_state) {
+        drw_setscheme(drw, scheme[SchemePower]);
+        int power_x = mw - power_width - stw - borderpx;
+        drw_rect(drw, power_x, y, power_width, th, 1, 1);
+        drw_text(drw, power_x, y, power_width, th, lrpad / 2, power, 0);
     }
 
     drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
 }
-
-
-
 
 void MINIBOXloadState() {
     FILE *inputFile = fopen(CURRENTS_MINIBOX, "r");
@@ -2381,48 +2493,59 @@ maprequest(XEvent *e)
 void
 motionnotify(XEvent *e)
 {
-	static Monitor *mon = NULL;
-	Monitor *m;
-	XMotionEvent *ev = &e->xmotion;
-	unsigned int i, x;
+    static Monitor *mon = NULL;
+    Monitor *m;
+    XMotionEvent *ev = &e->xmotion;
+    unsigned int i, x;
 
-	if (ev->window == selmon->barwin) {
-		i = x = 0;
-		do
-			x += TEXTW(tags[i]);
-		while (ev->x >= x && ++i < LENGTH(tags));
-	/* FIXME when hovering the mouse over the tags and we view the tag,
-	 *       the preview window get's in the preview shot */
+    if (ev->window == selmon->barwin) {
+        i = x = 0;
 
-	     	if (i < LENGTH(tags)) {
-			if (selmon->previewshow != (i + 1)
-			&& !(selmon->tagset[selmon->seltags] & 1 << i)) {
-				selmon->previewshow = i + 1;
-				showtagpreview(i);
-			} else if (selmon->tagset[selmon->seltags] & 1 << i) {
-				selmon->previewshow = 0;
-				XUnmapWindow(dpy, selmon->tagwin);
-			}
-		} else if (selmon->previewshow) {
-			selmon->previewshow = 0;
-			XUnmapWindow(dpy, selmon->tagwin);
-		}
-	} else if (ev->window == selmon->tagwin) {
-		selmon->previewshow = 0;
-		XUnmapWindow(dpy, selmon->tagwin);
-	} else if (selmon->previewshow) {
-		selmon->previewshow = 0;
-		XUnmapWindow(dpy, selmon->tagwin);
-	}
+        /* Учитываем область логотипа */
+        int logo_width = TEXTW(logo);
+        if (ev->x < logo_width) {
+            if (selmon->previewshow) {
+                selmon->previewshow = 0;
+                XUnmapWindow(dpy, selmon->tagwin);
+            }
+            return; // Наведение на логотип, ничего не делаем
+        }
+        
+        x += logo_width; // Начинаем проверку тегов после логотипа
 
-	if (ev->window != root)
-		return;
-	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
-		unfocus(selmon->sel, 1);
-		selmon = m;
-		focus(NULL);
-	}
-	mon = m;
+        do
+            x += TEXTW(tags[i]);
+        while (ev->x >= x && ++i < LENGTH(tags));
+
+        if (i < LENGTH(tags)) {
+            if (selmon->previewshow != (i + 1)
+                && !(selmon->tagset[selmon->seltags] & 1 << i)) {
+                selmon->previewshow = i + 1;
+                showtagpreview(i);
+            } else if (selmon->tagset[selmon->seltags] & 1 << i) {
+                selmon->previewshow = 0;
+                XUnmapWindow(dpy, selmon->tagwin);
+            }
+        } else if (selmon->previewshow) {
+            selmon->previewshow = 0;
+            XUnmapWindow(dpy, selmon->tagwin);
+        }
+    } else if (ev->window == selmon->tagwin) {
+        selmon->previewshow = 0;
+        XUnmapWindow(dpy, selmon->tagwin);
+    } else if (selmon->previewshow) {
+        selmon->previewshow = 0;
+        XUnmapWindow(dpy, selmon->tagwin);
+    }
+
+    if (ev->window != root)
+        return;
+    if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
+        unfocus(selmon->sel, 1);
+        selmon = m;
+        focus(NULL);
+    }
+    mon = m;
 }
 
 void
@@ -3286,8 +3409,7 @@ previewtag(const Arg *arg)
 	showtagpreview(arg->ui);
 }
 
-void
-setup(void)
+void setup(void)
 {
     load_showtitle_state();
     int i;
@@ -3345,7 +3467,7 @@ setup(void)
     netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
     netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-  	netatom[NetWMIcon] = XInternAtom(dpy, "_NET_WM_ICON", False);
+    netatom[NetWMIcon] = XInternAtom(dpy, "_NET_WM_ICON", False);
     netatom[NetClientInfo] = XInternAtom(dpy, "_NET_CLIENT_INFO", False);
 
     xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
@@ -3361,7 +3483,6 @@ setup(void)
     scheme = ecalloc(LENGTH(colors), sizeof(Clr *));
     for (i = 0; i < LENGTH(colors); i++)
         scheme[i] = drw_scm_create(drw, colors[i], 3);
-    drw_clr_create(drw, &clrborder, col_borderbar); /* Создаём цвет для рамки */
 
     /* init system tray */
     updatesystray();
@@ -3721,7 +3842,7 @@ updatebars(void)
 		m->barwin = XCreateWindow(dpy, root, m->wx, m->by, w, bh, 0, DefaultDepth(dpy, screen),
 				CopyFromParent, DefaultVisual(dpy, screen),
 				CWOverrideRedirect|CWBackPixmap|CWEventMask, &wa);
-		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
+    XDefineCursor(dpy, m->barwin, XCreateFontCursor(dpy, XC_hand2));
 		if (showsystray && m == systraytomon(m))
 			XMapRaised(dpy, systray->win);
 		XMapRaised(dpy, m->barwin);

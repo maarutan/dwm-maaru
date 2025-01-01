@@ -18,6 +18,7 @@ APPLICATIONS=(
     "telegram-desktop"
     # "plank"
     "kitty --title \"neofetch_terminal\" -e bash -c 'neofetch --config $HOME/.config/neofetch/myProfile.conf; exec bash'"
+    "$HOME/.suckless/scripts/quran"
 )
 
 # Функция для завершения старых экземпляров приложения
@@ -62,11 +63,12 @@ for app_command in "${APPLICATIONS[@]}"; do
     run_application "$app_command"
 done
 
+export PATH=$PATH:$HOME/.local/bin 
 # Запуск оконного менеджера dwm в бесконечном цикле
+# 
 echo "Запуск оконного менеджера dwm..."
 while true; do
     setxkbmap -layout us,ru -option 'grp:ctrl_alt_toggle' -option 'ctrl:nocaps'
-    export PATH=$PATH:$HOME/.local/bin 
     dwm 2>~/.dwm.log 
 
 done
